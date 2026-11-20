@@ -14,7 +14,7 @@ tags:
 
 它不加任何参数，也不改 SLA 的代码：`install()` 在运行时给 SLA 的几个函数打补丁。
 
-代码拆自 [franzi-sim](https://github.com/heliang-pu/franzi-sim) 项目，那里用它训练出了 `franzi_sla_mem1`。这里只有代码，没有权重。
+代码拆自 [franzi-sim](https://github.com/heliang-pu/franzi-sim) 项目，那里用它训练出了 `franzi_sla_mem1`。它的权重只放在 Hugging Face 上，见[权重](#权重)。
 
 ## 相比原版 SLA 的提升
 
@@ -120,6 +120,24 @@ actions = policy.infer({"images": images, "state": state, "prompt": prompt})["ac
 ```
 
 如果每次查询都落在 25 的倍数上（每次执行 25 或 50 步），每 25 拍看一次就够；否则要每拍都给它看。缺了要用的帧时，`stack()` 会报错。
+
+## 权重
+
+`franzi_sla_mem1` 第 9 999 步的权重只放在 Hugging Face 仓库 [puheliang/sla-mem](https://huggingface.co/puheliang/sla-mem) 里，GitHub 上没有：
+
+| 路径 | 内容 |
+|---|---|
+| `checkpoints/franzi_sla_mem1/9999/params/` | 模型参数，openpi 的 orbax 格式，12 GB |
+| `checkpoints/franzi_sla_mem1/9999/assets/franzi/norm_stats.json` | 状态和动作的归一化统计 |
+| `checkpoints/LICENSE_GEMMA.txt` | Gemma 使用条款 |
+
+- 这些是推理需要的全部。优化器状态（31 GB）没有上传，所以不能从这里接着训练。
+- 下载：`hf download puheliang/sla-mem --include "checkpoints/*" --local-dir <目录>`。
+- 加载：先调用 `mem.install(6, 25)`，再用 openpi 的 `policy_config.create_trained_policy(config, "<目录>/checkpoints/franzi_sla_mem1/9999")`。
+- 这份权重是为 franzi 机器人训练的，`config` 和输入输出的变换要用 franzi-sim 的 `policy/sla`：
+  - 输入：三路相机，即胸前的 D435 和左右手腕的 D405；还有两只手的绝对末端位姿，由 16 维关节经正运动学算出。
+  - 输出：相对末端位姿的动作块，再由逆运动学解回关节。
+- 权重从 SLA 的基础权重 SLA_base 微调而来，SLA_base 又源自 PaliGemma，所以这份权重受 Gemma 使用条款约束。
 
 ## 比原版慢多少
 
@@ -248,3 +266,4 @@ actions = policy.infer({"images": images, "state": state, "prompt": prompt})["ac
 - 改自 LeRobot（Apache-2.0）的部分：`query_timestamps` 改自 `LeRobotDataset._get_query_timestamps`。
 - 这几个函数改了哪里，写在各自的文档字符串里。Apache-2.0 的全文见 `LICENSE-APACHE-2.0.txt`。
 - 其余代码没有附许可证。
+- 权重受 Gemma 使用条款约束，条款全文是 Hugging Face 仓库里的 `checkpoints/LICENSE_GEMMA.txt`。
