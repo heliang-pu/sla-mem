@@ -1,5 +1,5 @@
-"""MEM's short-horizon video memory (arXiv 2603.03596) for SLA's JAX pi0.5, as LeRobot's pi05
-has it (lerobot/policies/pi05/memory.py).
+"""The short-horizon video memory of Physical Intelligence's MEM (arXiv 2603.03596), for
+SLA's JAX pi0.5.
 
 Every fourth of SigLIP's 27 layers attends over time too: a causal temporal attention between
 the same patch of a camera's frames, composed with the spatial one, both from that layer's
@@ -8,8 +8,8 @@ embedding, zero for the current frame. After the last such layer only the curren
 on, so the language model sees as many image tokens as before; one frame gives stock SigLIP.
 No parameter is added. Only the visual memory: no proprioceptive memory, no language memory.
 
-Unlike LeRobot, frames from before an episode's start are its first frame again, not masked:
-LeRobot's dataset clamps such queries to the first frame in training, and FrameHistory fills
+Frames from before an episode's start are its first frame again, not masked: LeRobot's
+dataset clamps such queries to the first frame in training, and FrameHistory fills
 the history the same way at inference, so the two agree.
 
 The frames travel through SLA's unchanged pipeline packed along each camera image's channels,

@@ -10,7 +10,7 @@ tags:
 
 # SLA-MEM：给 SLA 加上 MEM 的短时视频记忆
 
-这是 [MEM](https://arxiv.org/abs/2603.03596) 的短时视频记忆在 SLA 上的实现。SLA（Spatial-Language-Action）是 [OpenHelix-Team/Spatial-Forcing](https://github.com/OpenHelix-Team/Spatial-Forcing) 里用 JAX 写的 pi0.5，这份代码照 LeRobot pi05 的 `use_visual_memory` 移植。加上它之后，每个相机除了当前帧，还能看到过去 5 秒的画面。
+这是 Physical Intelligence（π）团队提出的 [MEM](https://arxiv.org/abs/2603.03596) 中短时视频记忆在 SLA 上的实现，照论文的做法写成。SLA（Spatial-Language-Action）是 [OpenHelix-Team/Spatial-Forcing](https://github.com/OpenHelix-Team/Spatial-Forcing) 里用 JAX 写的 pi0.5。加上它之后，每个相机除了当前帧，还能看到过去 5 秒的画面。
 
 它不加任何参数，也不改 SLA 的代码：`install()` 在运行时给 SLA 的几个函数打补丁。
 
@@ -57,7 +57,7 @@ tags:
 - 最后一个时间层之后只留当前帧，所以语言模型看到的图像 token 和原来一样多（每个相机 256 个）。
 - 不加参数：只给一帧时，它就是原来的 SigLIP。所以可以接在不带记忆的权重上继续训练。论文把这种做法叫 MEM-Posttrain-Only，效果比预训练时就带记忆差一些。
 - 只有视觉记忆，没有本体感觉记忆，也没有语言记忆。
-- 回合开始前的历史用第一帧补齐，不打掩码。训练时 LeRobot 把越界的查询夹到第一帧，推理时 `FrameHistory` 也这样补。
+- 回合开始前的历史用第一帧补齐，不打掩码。训练时 LeRobot 数据集把越界的查询夹到第一帧，推理时 `FrameHistory` 也这样补。
 - 和原版 SigLIP 一样，各层用 `lax.scan` 逐层走：每层是同一个函数，用一个标志区分普通层和时间层。
   - 如果把 27 层展开来写，XLA 会把所有层的重算提前做掉，重算就省不了显存。
   - 在 CPU 上量 72 帧的 SigLIP 梯度所需的临时内存：原版 5.8 GiB；扫描写法在 72 个单帧时 6.2 GiB，在 12 段 × 6 帧时 7.4 GiB；展开写法只给单帧也要 58 GiB。
@@ -76,7 +76,7 @@ tags:
 | `Pi0.embed_prefix` | 打包的图像改走上面的时空 SigLIP |
 | `data_loader._worker_init_fn` | SLA 另起的数据加载进程也装上这些补丁（单数据集且 `num_workers > 0` 时才会另起进程） |
 
-你自己只需改一处：在机器人自己的输入变换里，每个相机的图像都用 `sla_mem.mem.as_image()` 处理。它把 LeRobot 给的 `[T, 3, h, w]` 浮点历史帧和服务端给的 `[T, h, w, 3]` 历史帧都打包成 `[h, w, 3T]`，单帧照原样输出。
+你自己只需改一处：在机器人自己的输入变换里，每个相机的图像都用 `sla_mem.mem.as_image()` 处理。它把 LeRobot 数据集给的 `[T, 3, h, w]` 浮点历史帧和服务端给的 `[T, h, w, 3]` 历史帧都打包成 `[h, w, 3T]`，单帧照原样输出。
 
 限制：
 - 3D 对齐要用 `use_camera_params=False`。用相机参数时，SLA 走另一个缩放函数，那个函数没有打补丁。
@@ -261,7 +261,7 @@ actions = policy.infer({"images": images, "state": state, "prompt": prompt})["ac
 
 ## 来源和许可
 
-- 方法来自 MEM（arXiv 2603.03596），参照的实现是 LeRobot 的 `lerobot/policies/pi05/memory.py`。
+- 方法来自 Physical Intelligence（π）团队的 MEM（arXiv 2603.03596），时间层的写法照论文附录 C 的式 3。
 - 改自 SLA 附带的 openpi（Apache-2.0）的部分：`embed_prefix` 改自 `Pi0.embed_prefix`；`preprocess` 沿用 `preprocess_observation` 的增强链。
 - 改自 LeRobot（Apache-2.0）的部分：`query_timestamps` 改自 `LeRobotDataset._get_query_timestamps`。
 - 这几个函数改了哪里，写在各自的文档字符串里。Apache-2.0 的全文见 `LICENSE-APACHE-2.0.txt`。
